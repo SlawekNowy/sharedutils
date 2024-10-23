@@ -136,15 +136,25 @@ util::Path util::Path::operator+(const Path &other) const
 	cpy += other;
 	return cpy;
 }
+static void resolve_multi_slash(std::string &str)
+{
+	const std::string doubleSlash = "//";
+	const std::string singleSlash = "/";
+	size_t pos;
+	while((pos = str.find(doubleSlash)) != std::string::npos)
+		str.replace(pos, doubleSlash.length(), singleSlash);
+}
 util::Path &util::Path::operator+=(const Path &other)
 {
 	if(IsFile()) {
 		if(other.GetString().find('/') != std::string::npos)
 			return *this; // Appending a path to a file makes no sense, we'll just ignore it...
 		m_path += other.m_path;
+		resolve_multi_slash(m_path);
 		return *this;
 	}
 	m_path += other.m_path;
+	resolve_multi_slash(m_path);
 	return *this;
 }
 util::Path util::Path::operator+(const char *other) const { return operator+(std::string {other}); }
@@ -277,14 +287,9 @@ void util::Path::RemoveFileExtension() { ufile::remove_extension_from_filename(m
 void util::Path::UpdatePath()
 {
 	std::replace(m_path.begin(), m_path.end(), '\\', '/');
+	resolve_multi_slash(m_path);
 
-	const std::string doubleSlash = "//";
-	const std::string singleSlash = "/";
-	size_t pos;
-	while((pos = m_path.find(doubleSlash)) != std::string::npos)
-		m_path.replace(pos, doubleSlash.length(), singleSlash);
-
-#ifdef _WIN32
+#if 0
 	if(m_path.empty() == false && m_path.front() == '/')
 		m_path.erase(m_path.begin());
 #endif
@@ -417,3 +422,94 @@ util::Path operator+(const std::string &path, const util::Path &other)
 }
 
 std::ostream &operator<<(std::ostream &out, const util::Path &path) { return out << path.GetString(); }
+
+void util::Path::RunTests()
+{
+	auto check = [](const util::Path &path, const std::string &expectedString) {
+		if(path.GetString() != expectedString)
+			throw std::runtime_error {"util::Path test failed: Got path \"" + path.GetString() + "\", expected \"" + expectedString + "\"."};
+	};
+	check(CreatePath("a"), "a/");
+	check(CreatePath("/"), "/");
+	check(CreatePath("."), "./");
+	check(CreatePath(".."), "../");
+
+	check(CreatePath("a/b"), "a/b/");
+	check(CreatePath("/a/b"), "/a/b/");
+
+	check(CreatePath("/a//b"), "/a/b/");
+	check(CreatePath("/a\\/b"), "/a/b/");
+	check(CreatePath("/a/////b/"), "/a/b/");
+
+	check(CreatePath("a", "b"), "a/b/");
+	check(CreatePath("/a/", "b"), "/a/b/");
+	check(CreatePath("a", "b", "c"), "a/b/c/");
+	check(CreatePath("/a", "b", "c"), "/a/b/c/");
+
+	check(CreatePath("", ""), "/");
+	check(CreatePath("", "b"), "b/");
+	check(CreatePath("a", ""), "a/");
+	check(CreatePath("/", ""), "/");
+
+	check(CreatePath("a/b/"), "a/b/");
+	check(CreatePath("/a/b//"), "/a/b/");
+	check(CreatePath("a///b//"), "a/b/");
+
+	check(CreatePath("a\\b"), "a/b/");
+	check(CreatePath("\\a\\b\\"), "/a/b/");
+
+	check(CreatePath("./a"), "./a/");
+	check(CreatePath("./"), "./");
+	check(CreatePath("../a"), "../a/");
+
+	// CreateFile test cases
+	check(CreateFile("a", "b.txt"), "a/b.txt");
+	check(CreateFile("/a", "b.txt"), "/a/b.txt");
+
+	check(CreateFile("a", "b", "c.txt"), "a/b/c.txt");
+	check(CreateFile("/a", "b", "c.txt"), "/a/b/c.txt");
+
+	check(CreateFile("/a//b/", "c.txt"), "/a/b/c.txt");
+	check(CreateFile("a///b", "c.txt"), "a/b/c.txt");
+
+	check(CreateFile("a", "b/c.txt"), "a/b/c.txt");
+	check(CreateFile("/a", "b/c.txt"), "/a/b/c.txt");
+
+	check(CreateFile("a", "b"), "a/b");
+	check(CreateFile("/a", "b"), "/a/b");
+	check(CreateFile("a", "b.exe"), "a/b.exe");
+
+	check(CreateFile("a\\b", "c.txt"), "a/b/c.txt");
+	check(CreateFile("\\a\\b\\", "c.txt"), "/a/b/c.txt");
+
+	check(CreateFile("", "b.txt"), "b.txt");
+	check(CreateFile("a", ""), "a");
+
+	check(CreateFile("./a", "b.txt"), "./a/b.txt");
+	check(CreateFile("../a", "b.txt"), "../a/b.txt");
+
+	check(CreatePath("a") + "b", "a/b");
+	check(CreatePath("a") + "b/", "a/b/");
+	check(CreatePath("a/") + "b", "a/b");
+	check(CreatePath("a/") + "b/", "a/b/");
+
+	// Addition
+	check(CreatePath("a") + CreatePath("b"), "a/b/");
+	check(CreatePath("/a") + CreatePath("b"), "/a/b/");
+	check(CreatePath("/a/") + CreatePath("b/"), "/a/b/");
+	check(CreatePath("a/") + CreatePath("b/"), "a/b/");
+
+	check(CreatePath("a") + CreateFile("b"), "a/b");
+	check(CreatePath("a/") + CreateFile("b"), "a/b");
+	check(CreatePath("/a") + CreateFile("b.exe"), "/a/b.exe");
+	check(CreatePath("a/") + CreateFile("c/b.exe"), "a/c/b.exe");
+
+	check(CreateFile("a", "b.txt") + "c", "a/b.txtc");
+
+	check(CreatePath("") + "b", "/b");
+	check(CreatePath("") + "b/", "/b/");
+	check(CreateFile("a", "") + "b", "ab");
+	check(CreateFile("") + "b", "b");
+	check(CreatePath("") + CreatePath("b"), "/b/");
+	check(CreatePath("") + CreateFile("b"), "/b");
+}
