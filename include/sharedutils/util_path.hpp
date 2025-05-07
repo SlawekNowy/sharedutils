@@ -72,6 +72,22 @@ namespace util {
 				p.pop_back();
 			return path;
 		}
+		template<typename... Args>
+		static Path CreateRelativePath(const Args &...args)
+		{
+			auto path = CreatePath(args...);
+			if(!path.m_path.empty() && path.m_path.front() == '/')
+				path.m_path.erase(path.m_path.begin());
+			return path;
+		}
+		template<typename... Args>
+		static Path CreateRelativeFile(const Args &...args)
+		{
+			auto path = CreateFile(args...);
+			if(!path.m_path.empty() && path.m_path.front() == '/')
+				path.m_path.erase(path.m_path.begin());
+			return path;
+		}
 		static void RunTests();
 		Path(const std::string &path = "");
 		Path(std::string &&path);
@@ -107,6 +123,7 @@ namespace util {
 		const std::string &GetString() const;
 		void MoveUp();
 		void Canonicalize();
+		void RemoveLeadingRootSlash();
 		bool IsFile() const;
 		bool IsDirectory() const;
 		std::optional<std::string> GetFileExtension() const;
@@ -175,6 +192,18 @@ namespace util {
 	Path DirPath(const Args &...args)
 	{
 		return Path::CreatePath(args...);
+	}
+
+	template<typename... Args>
+	Path RelFile(const Args &...args)
+	{
+		return Path::CreateRelativeFile(args...);
+	}
+
+	template<typename... Args>
+	Path RelPath(const Args &...args)
+	{
+		return Path::CreateRelativePath(args...);
 	}
 };
 

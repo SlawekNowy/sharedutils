@@ -86,6 +86,8 @@ void util::canonicalize_path(std::string &inOutPath)
 		newPath = '/' + newPath;
 	if(endedWithSlash) // If our original path ended with a simple slash, we want the new path to also end with it
 		newPath += '/';
+	if(newPath == "//")
+		newPath = "/";
 	inOutPath = std::move(newPath);
 }
 
@@ -275,6 +277,11 @@ std::vector<std::string> util::Path::ToComponents() const
 const std::string &util::Path::GetString() const { return m_path; }
 void util::Path::MoveUp() { PopBack(); }
 void util::Path::Canonicalize() { canonicalize_path(m_path); }
+void util::Path::RemoveLeadingRootSlash()
+{
+	if(m_path.empty() == false && m_path.front() == '/')
+		m_path.erase(m_path.begin());
+}
 bool util::Path::IsFile() const { return !IsDirectory(); }
 bool util::Path::IsDirectory() const { return m_path.empty() || m_path.back() == '/' || m_path.back() == '\\'; }
 std::optional<std::string> util::Path::GetFileExtension() const
