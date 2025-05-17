@@ -34,9 +34,9 @@ namespace util {
 	class DLLSHUTIL BaseParallelWorker : public std::enable_shared_from_this<BaseParallelWorker> {
 	  public:
 		BaseParallelWorker() = default;
-		BaseParallelWorker(const BaseParallelWorker &) = default;
+        BaseParallelWorker(const BaseParallelWorker &) = delete;
 		virtual ~BaseParallelWorker();
-		BaseParallelWorker &operator=(const BaseParallelWorker &) = default;
+        BaseParallelWorker &operator=(const BaseParallelWorker &) = delete;
 		void Cancel();
 		void Cancel(const std::string &resultMsg, std::optional<int32_t> resultCode = {});
 		virtual void Wait();
@@ -90,9 +90,9 @@ namespace util {
 	  public:
 		using RESULT_TYPE = T;
 		ParallelWorker() = default;
-		ParallelWorker(const ParallelWorker &) = default;
+        ParallelWorker(const ParallelWorker &) = delete;
 		virtual ~ParallelWorker() = default;
-		ParallelWorker &operator=(const ParallelWorker &) = default;
+        ParallelWorker &operator=(const ParallelWorker &) = delete;
 
 		virtual T GetResult() = 0;
 		void SetCompletionHandler(const std::function<void(ParallelWorker<T> &)> &fOnComplete) { m_fOnComplete = fOnComplete; }
